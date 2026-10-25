@@ -1,4 +1,4 @@
-package com.zxn.zxguard.mobile
+package com.zxn.nativewatch.mobile
 
 import android.content.Context
 import android.os.Handler
@@ -7,11 +7,11 @@ import com.nativephp.mobile.bridge.BridgeFunction
 import com.nativephp.mobile.bridge.BridgeResponse
 import org.json.JSONArray
 
-/** Bridge functions that the PHP side of zx-mobile calls through `nativephp_call()`. */
-object ZXGuardFunctions {
+/** Bridge functions that the PHP side of native-mobile calls through `nativephp_call()`. */
+object NativeWatchFunctions {
     class PendingCrashReports(private val context: Context) : BridgeFunction {
         override fun execute(parameters: Map<String, Any>): Map<String, Any> =
-            BridgeResponse.success(mapOf("reports" to ZXGuardCrashReporter.pending(context)))
+            BridgeResponse.success(mapOf("reports" to NativeWatchCrashReporter.pending(context)))
     }
 
     class DeleteCrashReports(private val context: Context) : BridgeFunction {
@@ -22,7 +22,7 @@ object ZXGuardFunctions {
                 else -> emptyList()
             }
 
-            ZXGuardCrashReporter.delete(context, ids)
+            NativeWatchCrashReporter.delete(context, ids)
 
             return BridgeResponse.success(mapOf("deleted" to ids.size))
         }
@@ -31,7 +31,7 @@ object ZXGuardFunctions {
     class TestCrash(private val context: Context) : BridgeFunction {
         override fun execute(parameters: Map<String, Any>): Map<String, Any> {
             Handler(Looper.getMainLooper()).post {
-                throw RuntimeException("This is a test crash from ZXGuard.")
+                throw RuntimeException("This is a test crash from NativeWatch.")
             }
 
             return BridgeResponse.success()

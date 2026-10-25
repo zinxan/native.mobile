@@ -3,15 +3,15 @@
 declare(strict_types=1);
 
 /**
- * A fake native bridge. Tests put crash reports in $GLOBALS['zxguard_bridge']['reports']
- * and read the calls that PHP made from $GLOBALS['zxguard_bridge']['calls'].
+ * A fake native bridge. Tests put crash reports in $GLOBALS['nativewatch_bridge']['reports']
+ * and read the calls that PHP made from $GLOBALS['nativewatch_bridge']['calls'].
  */
-$GLOBALS['zxguard_bridge'] = ['reports' => [], 'calls' => []];
+$GLOBALS['nativewatch_bridge'] = ['reports' => [], 'calls' => []];
 
 if (! function_exists('nativephp_call')) {
     function nativephp_call(string $method, string $parameters): string|false
     {
-        $GLOBALS['zxguard_bridge']['calls'][] = [$method, json_decode($parameters, true)];
+        $GLOBALS['nativewatch_bridge']['calls'][] = [$method, json_decode($parameters, true)];
 
         return match ($method) {
             'Device.GetInfo' => json_encode(['info' => json_encode([
@@ -24,8 +24,8 @@ if (! function_exists('nativephp_call')) {
                 'isVirtual' => true,
                 'webViewVersion' => '26.0',
             ])]),
-            'ZXGuard.PendingCrashReports' => json_encode(['reports' => $GLOBALS['zxguard_bridge']['reports']]),
-            'ZXGuard.Broken' => json_encode(['status' => 'error', 'code' => 'x', 'message' => 'Broken', 'data' => []]),
+            'NativeWatch.PendingCrashReports' => json_encode(['reports' => $GLOBALS['nativewatch_bridge']['reports']]),
+            'NativeWatch.Broken' => json_encode(['status' => 'error', 'code' => 'x', 'message' => 'Broken', 'data' => []]),
             default => json_encode([]),
         };
     }

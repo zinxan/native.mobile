@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
-use ZXN\ZXGuard\Mobile\Bridge;
-use ZXN\ZXGuard\Mobile\MobileServiceProvider;
-use ZXN\ZXGuard\Mobile\NativeCrashes;
+use ZXN\NativeWatch\Mobile\Bridge;
+use ZXN\NativeWatch\Mobile\MobileServiceProvider;
+use ZXN\NativeWatch\Mobile\NativeCrashes;
 
 require_once __DIR__.'/Fixtures/Runtime.php';
 require_once __DIR__.'/Fixtures/bridge.php';
@@ -36,18 +36,18 @@ function nativeCrashReport(string $id = '7f1c4a0e-5b8e-4c1a-9a51-8d3c2b1a0f00'):
 beforeEach(function (): void {
     Http::preventStrayRequests();
     Http::fake(['zxguard.test/*' => Http::response(status: 202)]);
-    $GLOBALS['zxguard_bridge'] = ['reports' => [], 'calls' => []];
+    $GLOBALS['nativewatch_bridge'] = ['reports' => [], 'calls' => []];
 
     config([
-        'zxguard.key' => 'zxg_mobile',
-        'zxguard.url' => 'https://zxguard.test',
-        'zxguard.outbox.path' => temporaryOutbox(),
+        'nativewatch.key' => 'nw_mobile',
+        'nativewatch.url' => 'https://zxguard.test',
+        'nativewatch.outbox.path' => temporaryOutbox(),
         'nativephp.version' => '3.1.0',
     ]);
 });
 
 it('sends the native crashes of an earlier launch after the first response', function (): void {
-    $GLOBALS['zxguard_bridge']['reports'] = [nativeCrashReport()];
+    $GLOBALS['nativewatch_bridge']['reports'] = [nativeCrashReport()];
     $this->app->register(MobileServiceProvider::class);
 
     $this->app->terminate();
@@ -60,15 +60,15 @@ it('sends the native crashes of an earlier launch after the first response', fun
         && $request['exception']['type'] === 'NSInternalInconsistencyException'
         && $request['context']['crash']['mechanism'] === 'ios.nsexception'
         && $request['context']['device']['model'] === 'iPhone17,1'
-        && $request['sdk']['name'] === 'zxn/zx-mobile');
+        && $request['sdk']['name'] === 'zinxan/native-mobile');
 
-    expect($GLOBALS['zxguard_bridge']['calls'])->toContain(
-        ['ZXGuard.DeleteCrashReports', ['ids' => ['7f1c4a0e-5b8e-4c1a-9a51-8d3c2b1a0f00']]],
+    expect($GLOBALS['nativewatch_bridge']['calls'])->toContain(
+        ['NativeWatch.DeleteCrashReports', ['ids' => ['7f1c4a0e-5b8e-4c1a-9a51-8d3c2b1a0f00']]],
     );
 });
 
 it('collects native crashes once per launch', function (): void {
-    $GLOBALS['zxguard_bridge']['reports'] = [nativeCrashReport()];
+    $GLOBALS['nativewatch_bridge']['reports'] = [nativeCrashReport()];
     $this->app->register(MobileServiceProvider::class);
     $crashes = resolve(NativeCrashes::class);
 
@@ -77,22 +77,22 @@ it('collects native crashes once per launch', function (): void {
 });
 
 it('deletes reports that native code wrote broken', function (): void {
-    $GLOBALS['zxguard_bridge']['reports'] = [['id' => 'broken', 'json' => '{not json']];
+    $GLOBALS['nativewatch_bridge']['reports'] = [['id' => 'broken', 'json' => '{not json']];
     $this->app->register(MobileServiceProvider::class);
 
     expect(resolve(NativeCrashes::class)->collect())->toBe(1);
 
     Http::assertNothingSent();
-    expect($GLOBALS['zxguard_bridge']['calls'])->toContain(['ZXGuard.DeleteCrashReports', ['ids' => ['broken']]]);
+    expect($GLOBALS['nativewatch_bridge']['calls'])->toContain(['NativeWatch.DeleteCrashReports', ['ids' => ['broken']]]);
 });
 
 it('crashes the app on purpose through the bridge', function (): void {
     $this->app->register(MobileServiceProvider::class);
 
     expect(resolve(NativeCrashes::class)->crashForTest())->toBeTrue()
-        ->and($GLOBALS['zxguard_bridge']['calls'])->toContain(['ZXGuard.TestCrash', []]);
+        ->and($GLOBALS['nativewatch_bridge']['calls'])->toContain(['NativeWatch.TestCrash', []]);
 });
 
 it('treats a bridge error as an empty answer', function (): void {
-    expect(new Bridge()->call('ZXGuard.Broken'))->toBe([]);
+    expect(new Bridge()->call('NativeWatch.Broken'))->toBe([]);
 });

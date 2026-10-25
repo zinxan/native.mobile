@@ -1,34 +1,34 @@
 {
-    "namespace": "ZXGuard",
+    "namespace": "NativeWatch",
     "bridge_functions": [
         {
-            "name": "ZXGuard.PendingCrashReports",
-            "ios": "ZXGuardFunctions.PendingCrashReports",
-            "android": "com.zxn.zxguard.mobile.ZXGuardFunctions.PendingCrashReports",
+            "name": "NativeWatch.PendingCrashReports",
+            "ios": "NativeWatchFunctions.PendingCrashReports",
+            "android": "com.zxn.nativewatch.mobile.NativeWatchFunctions.PendingCrashReports",
             "android_params": ["context"],
-            "description": "Returns the native crash reports that wait to be sent to ZXGuard."
+            "description": "Returns the native crash reports that wait to be sent to NativeWatch."
         },
         {
-            "name": "ZXGuard.DeleteCrashReports",
-            "ios": "ZXGuardFunctions.DeleteCrashReports",
-            "android": "com.zxn.zxguard.mobile.ZXGuardFunctions.DeleteCrashReports",
+            "name": "NativeWatch.DeleteCrashReports",
+            "ios": "NativeWatchFunctions.DeleteCrashReports",
+            "android": "com.zxn.nativewatch.mobile.NativeWatchFunctions.DeleteCrashReports",
             "android_params": ["context"],
             "description": "Deletes native crash reports after PHP stored them in the outbox."
         },
         {
-            "name": "ZXGuard.TestCrash",
-            "ios": "ZXGuardFunctions.TestCrash",
-            "android": "com.zxn.zxguard.mobile.ZXGuardFunctions.TestCrash",
+            "name": "NativeWatch.TestCrash",
+            "ios": "NativeWatchFunctions.TestCrash",
+            "android": "com.zxn.nativewatch.mobile.NativeWatchFunctions.TestCrash",
             "android_params": ["context"],
             "description": "Crashes the app on purpose, to check that crash reporting works."
         }
     ],
     "ios": {
         "min_version": "17.0",
-        "init_function": "ZXGuardCrashReporter.install"
+        "init_function": "NativeWatchCrashReporter.install"
     },
     "android": {
         "min_version": 26,
-        "init_function": "com.zxn.zxguard.mobile.installZXGuardCrashReporter"
+        "init_function": "com.zxn.nativewatch.mobile.installNativeWatchCrashReporter"
     }
 }

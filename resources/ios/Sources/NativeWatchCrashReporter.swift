@@ -1,21 +1,21 @@
 import Foundation
 import MetricKit
 
-/// Captures native crashes and keeps them on disk until PHP sends them to ZXGuard.
+/// Captures native crashes and keeps them on disk until PHP sends them to NativeWatch.
 ///
 /// NativePHP calls `install()` when the app starts (`ios.init_function` in nativephp.json).
 /// Objective-C exceptions are written the moment they happen. Hard crashes, such as a
 /// bad memory access or a Swift trap, arrive from MetricKit on the next launch.
-enum ZXGuardCrashReporter {
+enum NativeWatchCrashReporter {
     private static let maxReports = 20
     private static var installed = false
     private static var previousHandler: (@convention(c) (NSException) -> Void)?
-    private static let metricSubscriber = ZXGuardMetricSubscriber()
+    private static let metricSubscriber = NativeWatchMetricSubscriber()
 
     static var directory: URL {
         FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("zxguard/crashes", isDirectory: true)
+            .appendingPathComponent("nativewatch/crashes", isDirectory: true)
     }
 
     static func install() {
@@ -24,8 +24,8 @@ enum ZXGuardCrashReporter {
 
         previousHandler = NSGetUncaughtExceptionHandler()
         NSSetUncaughtExceptionHandler { exception in
-            ZXGuardCrashReporter.record(exception: exception)
-            ZXGuardCrashReporter.previousHandler?(exception)
+            NativeWatchCrashReporter.record(exception: exception)
+            NativeWatchCrashReporter.previousHandler?(exception)
         }
 
         MXMetricManager.shared.add(metricSubscriber)
@@ -213,11 +213,11 @@ enum ZXGuardCrashReporter {
 }
 
 /// Receives the crash diagnostics that iOS delivers on the next launch.
-final class ZXGuardMetricSubscriber: NSObject, MXMetricManagerSubscriber {
+final class NativeWatchMetricSubscriber: NSObject, MXMetricManagerSubscriber {
     func didReceive(_ payloads: [MXDiagnosticPayload]) {
         for payload in payloads {
             for crash in payload.crashDiagnostics ?? [] {
-                ZXGuardCrashReporter.record(diagnostic: crash, at: payload.timeStampEnd)
+                NativeWatchCrashReporter.record(diagnostic: crash, at: payload.timeStampEnd)
             }
         }
     }
