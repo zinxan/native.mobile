@@ -1,4 +1,4 @@
-package com.zxn.zxguard.mobile
+package com.zxn.nativewatch.mobile
 
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
@@ -22,7 +22,7 @@ private val installed = AtomicBoolean(false)
  * Uncaught JVM exceptions are written the moment they happen, then the previous handler
  * still runs. ANRs and native (NDK) crashes are read from ApplicationExitInfo on the next launch.
  */
-fun installZXGuardCrashReporter(context: Context) {
+fun installNativeWatchCrashReporter(context: Context) {
     if (!installed.compareAndSet(false, true)) return
 
     val appContext = context.applicationContext
@@ -30,7 +30,7 @@ fun installZXGuardCrashReporter(context: Context) {
 
     Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
         try {
-            ZXGuardCrashReporter.record(appContext, throwable, thread)
+            NativeWatchCrashReporter.record(appContext, throwable, thread)
         } catch (_: Throwable) {
         }
 
@@ -38,16 +38,16 @@ fun installZXGuardCrashReporter(context: Context) {
     }
 
     try {
-        ZXGuardCrashReporter.recordPastExits(appContext)
+        NativeWatchCrashReporter.recordPastExits(appContext)
     } catch (_: Throwable) {
     }
 }
 
-object ZXGuardCrashReporter {
+object NativeWatchCrashReporter {
     private const val MAX_REPORTS = 20
     private const val MAX_FRAMES = 100
 
-    fun directory(context: Context): File = File(context.filesDir, "zxguard/crashes")
+    fun directory(context: Context): File = File(context.filesDir, "nativewatch/crashes")
 
     fun record(context: Context, throwable: Throwable, thread: Thread) {
         store(context, report(
@@ -63,7 +63,7 @@ object ZXGuardCrashReporter {
     fun recordPastExits(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
 
-        val preferences = context.getSharedPreferences("zxguard", Context.MODE_PRIVATE)
+        val preferences = context.getSharedPreferences("nativewatch", Context.MODE_PRIVATE)
         val lastSeen = preferences.getLong("last_exit_timestamp", 0L)
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val exits = manager.getHistoricalProcessExitReasons(null, 0, 10)

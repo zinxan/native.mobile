@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace ZXN\ZXGuard\Mobile;
+namespace ZXN\NativeWatch\Mobile;
 
 use Composer\InstalledVersions;
 use Illuminate\Contracts\Config\Repository;
-use ZXN\ZXGuard\Core\Contracts\ContextProvider;
+use ZXN\NativeWatch\Core\Contracts\ContextProvider;
 
 final class MobileContext implements ContextProvider
 {

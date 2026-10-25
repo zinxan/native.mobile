@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ZXN\ZXGuard\Mobile;
+namespace ZXN\NativeWatch\Mobile;
 
-use ZXN\ZXGuard\Core\Client;
+use ZXN\NativeWatch\Core\Client;
 
 final class NativeCrashes
 {
@@ -28,7 +28,7 @@ final class NativeCrashes
 
         $this->collected = true;
 
-        $reports = $this->bridge->call('ZXGuard.PendingCrashReports')['reports'] ?? [];
+        $reports = $this->bridge->call('NativeWatch.PendingCrashReports')['reports'] ?? [];
         $ids = [];
 
         foreach (is_array($reports) ? $reports : [] as $entry) {
@@ -46,7 +46,7 @@ final class NativeCrashes
         }
 
         if ($ids !== []) {
-            $this->bridge->call('ZXGuard.DeleteCrashReports', ['ids' => $ids]);
+            $this->bridge->call('NativeWatch.DeleteCrashReports', ['ids' => $ids]);
         }
 
         return count($ids);
@@ -61,7 +61,7 @@ final class NativeCrashes
             return false;
         }
 
-        $this->bridge->call('ZXGuard.TestCrash');
+        $this->bridge->call('NativeWatch.TestCrash');
 
         return true;
     }

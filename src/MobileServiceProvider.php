@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace ZXN\ZXGuard\Mobile;
+namespace ZXN\NativeWatch\Mobile;
 
 use Illuminate\Contracts\Foundation\Application;
 use Native\Mobile\Runtime;
-use ZXN\ZXGuard\Core\Client;
-use ZXN\ZXGuard\Core\Config;
-use ZXN\ZXGuard\Core\Contracts\ContextProvider;
-use ZXN\ZXGuard\Core\Laravel\ZXGuardServiceProvider;
+use ZXN\NativeWatch\Core\Client;
+use ZXN\NativeWatch\Core\Config;
+use ZXN\NativeWatch\Core\Contracts\ContextProvider;
+use ZXN\NativeWatch\Core\Laravel\NativeWatchServiceProvider;
 
-final class MobileServiceProvider extends ZXGuardServiceProvider
+final class MobileServiceProvider extends NativeWatchServiceProvider
 {
     /**
      * Get the name of the SDK, as it shows on every event.
      */
     protected function sdkName(): string
     {
-        return 'zxn/zx-mobile';
+        return 'zinxan/native-mobile';
     }
 
     /**

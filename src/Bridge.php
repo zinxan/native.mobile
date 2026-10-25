@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ZXN\ZXGuard\Mobile;
+namespace ZXN\NativeWatch\Mobile;
 
 use JsonException;
 
