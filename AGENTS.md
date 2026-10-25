@@ -1,6 +1,15 @@
 # zxn/zx-mobile
 
-`zx-mobile` reports the errors of NativePHP iOS and Android apps, including SuperNative screens. It holds two classes: `MobileServiceProvider` hooks `zx-core` into the app and the persistent runtime, and `MobileContext` reads the device through the native bridge. Everything else comes from `zx-core`. Read `packages/zx-core/AGENTS.md` first.
+`zx-mobile` reports the errors of NativePHP iOS and Android apps, including SuperNative screens and native crashes. It is a NativePHP plugin (`"type": "nativephp-plugin"`, manifest in `nativephp.json`). The PHP side hooks `zx-core` into the app; the native side catches crashes in Swift and Kotlin. Everything else comes from `zx-core`. Read `packages/zx-core/AGENTS.md` first.
+
+| Path | What it is |
+| --- | --- |
+| `src/MobileServiceProvider.php` | Hooks into the persistent runtime and collects native crashes after the first response of a launch. |
+| `src/MobileContext.php` | Reads the device, the OS and the app through the bridge. |
+| `src/Bridge.php` | The only class that calls `nativephp_call()`. |
+| `src/NativeCrashes.php` | Moves native crash reports into the outbox of `zx-core`. |
+| `resources/ios/Sources/` | Swift: the crash reporter (`init_function`) and the bridge functions. |
+| `resources/android/src/` | Kotlin: the crash reporter (`init_function`) and the bridge functions. |
 
 ---
 
@@ -16,19 +25,34 @@
 
 ---
 
-## 2. Native crash capture (next)
+## 2. Native crashes
 
-A PHP SDK cannot see a crash in Swift or Kotlin. To capture one, turn this package into a NativePHP plugin:
+A crashing process can only write a file. Sending happens on the next launch, in PHP:
 
-1. Set `"type": "nativephp-plugin"` in `composer.json` and add `nativephp.json` with the namespace `ZXGuard`.
-2. Add Swift code in `resources/ios/Sources/` and Kotlin code in `resources/android/src/` that writes each crash report to the outbox directory of `zx-core`.
-3. Let `zx-core` send the reports on the next start, the same way it sends PHP events.
-4. Validate the plugin with `php artisan native:plugin:validate` in `examples/mobile`.
+1. NativePHP calls the `init_function` of each platform at launch: `ZXGuardCrashReporter.install()` (Swift) and `installZXGuardCrashReporter(context)` (Kotlin). Keep both idempotent.
+2. On a crash, native code writes one JSON report in the shape of the ingest API to `zxguard/crashes/<event_id>.json`: Application Support on iOS, `filesDir` on Android. Keep at most 20 reports.
+3. After the first response of the next launch, `NativeCrashes::collect()` reads the reports through `ZXGuard.PendingCrashReports`, passes each to `Client::captureEvent()`, and deletes them through `ZXGuard.DeleteCrashReports`.
+
+Sources of crashes:
+
+- iOS: Objective-C exceptions through `NSSetUncaughtExceptionHandler` (written at once, then the previous handler runs), and hard crashes (bad memory access, Swift traps) through MetricKit, which iOS delivers on the next launch. MetricKit does not deliver on the simulator. Do not add signal handlers: they are not safe and they fight other crash reporters.
+- Android: uncaught JVM exceptions through `Thread.setDefaultUncaughtExceptionHandler` (written at once, then the previous handler runs), and ANRs and native (NDK) crashes through `ApplicationExitInfo` (Android 11 and later) on the next launch.
+
+Rules:
+
+- Keep native frames stable between launches of one build. Use binary offsets, never absolute addresses: ASLR changes them on each launch and splits every crash into its own issue.
+- Mark a frame `in_app` when it belongs to the app: the executable of the bundle on iOS, the package name of the app on Android.
+- Add a bridge function to `nativephp.json`, Swift and Kotlin together. Give each Android bridge class `"android_params": ["context"]`.
+- Never let crash reporting throw. Wrap native file work in `try?` (Swift) or `try` (Kotlin), and always run the previous handler.
+- Type-check Swift before you finish: `xcrun --sdk iphonesimulator swiftc -typecheck -target arm64-apple-ios18.2-simulator <stub> resources/ios/Sources/*.swift`, with a stub file that declares `BridgeFunction` and `BridgeResponse` the way `vendor/nativephp/mobile/resources/xcode/NativePHP/Bridge/BridgeRouter.swift` does.
+- Validate the plugin from `examples/mobile`: `php artisan native:plugin:validate vendor/zxn/zx-mobile`.
+- Next: upload dSYM files and ProGuard mappings at build time (a `post_build` hook) so the server can symbolicate native frames.
 
 ---
 
 ## 3. Tests
 
 - Put the tests in `packages/zx-mobile/tests/`. They run in the root suite.
-- Use `tests/Fixtures/bridge.php` for a fake `nativephp_call()` and `tests/Fixtures/Runtime.php` for a fake runtime. Do not install `nativephp/mobile` in the root app.
+- Use `tests/Fixtures/bridge.php` for a fake `nativephp_call()` and `tests/Fixtures/Runtime.php` for a fake runtime. Put pending crash reports in `$GLOBALS['zxguard_bridge']['reports']` and read the calls of PHP from `$GLOBALS['zxguard_bridge']['calls']`. Do not install `nativephp/mobile` in the root app.
+- Remember that the fake `nativephp_call()` exists for the whole test process once a mobile test file loads. Do not write a test that needs the function to be missing.
 - Try the SDK on a simulator with `examples/mobile`.

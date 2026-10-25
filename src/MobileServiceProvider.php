@@ -34,12 +34,20 @@ final class MobileServiceProvider extends ZXGuardServiceProvider
     }
 
     /**
-     * Clear the breadcrumbs and user of a request before the persistent runtime serves the next one.
+     * Hook into the persistent runtime and collect the native crashes of earlier launches.
      */
     protected function bootPlatform(Client $client): void
     {
         if (class_exists(Runtime::class)) {
             Runtime::onReset(fn (): null => $client->scope->clear());
         }
+
+        $this->app->singleton(NativeCrashes::class);
+
+        $this->app->terminating(function () use ($client): void {
+            if ($this->app->make(NativeCrashes::class)->collect() > 0) {
+                $client->flush();
+            }
+        });
     }
 }

@@ -13,6 +13,15 @@ ZXGUARD_KEY=zxg_...
 ZXGUARD_URL=https://zxguard.app
 ```
 
+Register the plugin, so its Swift and Kotlin crash reporter is compiled into your app:
+
+```bash
+php artisan vendor:publish --tag=nativephp-plugins-provider
+php artisan native:plugin:register zxn/zx-mobile
+```
+
+Native crashes (Objective-C and Swift on iOS, uncaught exceptions, ANRs and NDK crashes on Android) are stored on the device and sent the next time the app opens.
+
 Send a test error:
 
 ```bash

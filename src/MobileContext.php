@@ -6,7 +6,6 @@ namespace ZXN\ZXGuard\Mobile;
 
 use Composer\InstalledVersions;
 use Illuminate\Contracts\Config\Repository;
-use JsonException;
 use ZXN\ZXGuard\Core\Contracts\ContextProvider;
 
 final class MobileContext implements ContextProvider
@@ -20,6 +19,7 @@ final class MobileContext implements ContextProvider
         private readonly Repository $config,
         private readonly string $laravelVersion,
         private readonly bool $sendDefaultPii = false,
+        private readonly Bridge $bridge = new Bridge,
     ) {}
 
     /**
@@ -81,37 +81,7 @@ final class MobileContext implements ContextProvider
      */
     private function device(): array
     {
-        if ($this->device !== null) {
-            return $this->device;
-        }
-
-        if (! function_exists('nativephp_call')) {
-            return $this->device = [];
-        }
-
-        $response = $this->decode(nativephp_call('Device.GetInfo', '{}'));
-        $info = $response['info'] ?? null;
-
-        return $this->device = is_string($info) ? $this->decode($info) : [];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function decode(mixed $json): array
-    {
-        if (! is_string($json) || $json === '') {
-            return [];
-        }
-
-        try {
-            $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            return [];
-        }
-
-        /** @var array<string, mixed> */
-        return is_array($decoded) ? $decoded : [];
+        return $this->device ??= Bridge::decode($this->bridge->call('Device.GetInfo')['info'] ?? null);
     }
 
     /**
