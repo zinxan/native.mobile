@@ -1,0 +1,30 @@
+{
+    "name": "zxn/zx-mobile",
+    "description": "Error tracking for NativePHP iOS and Android apps, reported to ZXGuard.",
+    "keywords": ["nativephp", "laravel", "ios", "android", "error-tracking", "zxguard"],
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.4",
+        "zxn/zx-core": "^0.1"
+    },
+    "suggest": {
+        "nativephp/mobile": "The NativePHP mobile runtime that this SDK reports for."
+    },
+    "autoload": {
+        "psr-4": {
+            "ZXN\\ZXGuard\\Mobile\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "ZXN\\ZXGuard\\Mobile\\MobileServiceProvider"
+            ],
+            "aliases": {
+                "ZXGuard": "ZXN\\ZXGuard\\Core\\Laravel\\ZXGuard"
+            }
+        }
+    },
+    "minimum-stability": "stable"
+}
