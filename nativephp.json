@@ -5,27 +5,70 @@
             "name": "NativeWatch.PendingCrashReports",
             "ios": "NativeWatchFunctions.PendingCrashReports",
             "android": "com.zxn.nativewatch.mobile.NativeWatchFunctions.PendingCrashReports",
-            "android_params": ["context"],
+            "android_params": [
+                "context"
+            ],
             "description": "Returns the native crash reports that wait to be sent to NativeWatch."
         },
         {
             "name": "NativeWatch.DeleteCrashReports",
             "ios": "NativeWatchFunctions.DeleteCrashReports",
             "android": "com.zxn.nativewatch.mobile.NativeWatchFunctions.DeleteCrashReports",
-            "android_params": ["context"],
+            "android_params": [
+                "context"
+            ],
             "description": "Deletes native crash reports after PHP stored them in the outbox."
         },
         {
             "name": "NativeWatch.TestCrash",
             "ios": "NativeWatchFunctions.TestCrash",
             "android": "com.zxn.nativewatch.mobile.NativeWatchFunctions.TestCrash",
-            "android_params": ["context"],
+            "android_params": [
+                "context"
+            ],
             "description": "Crashes the app on purpose, to check that crash reporting works."
+        },
+        {
+            "name": "NativeWatch.GetConsent",
+            "ios": "NativeWatchFunctions.GetConsent",
+            "android": "com.zxn.nativewatch.mobile.NativeWatchFunctions.GetConsent",
+            "android_params": [
+                "context"
+            ],
+            "description": "Reads the persisted diagnostic consent generation."
+        },
+        {
+            "name": "NativeWatch.SetConsent",
+            "ios": "NativeWatchFunctions.SetConsent",
+            "android": "com.zxn.nativewatch.mobile.NativeWatchFunctions.SetConsent",
+            "android_params": [
+                "context"
+            ],
+            "description": "Persists a diagnostic consent choice and removes pending native reports."
         }
     ],
     "ios": {
         "min_version": "17.0",
-        "init_function": "NativeWatchCrashReporter.install"
+        "init_function": "NativeWatchCrashReporter.install",
+        "dependencies": {
+            "swift_packages": [
+                {
+                    "url": "https://github.com/zinxan/KSCrash",
+                    "version": "2.6.1-nativewatch.1",
+                    "products": [
+                        "Recording",
+                        "RecordingCore"
+                    ]
+                },
+                {
+                    "url": "https://github.com/apple/swift-atomics",
+                    "version": "1.3.1",
+                    "products": [
+                        "Atomics"
+                    ]
+                }
+            ]
+        }
     },
     "android": {
         "min_version": 26,

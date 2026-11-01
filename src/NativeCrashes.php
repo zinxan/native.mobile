@@ -22,7 +22,7 @@ final class NativeCrashes
      */
     public function collect(): int
     {
-        if ($this->collected || ! $this->bridge->isAvailable()) {
+        if ($this->collected || ! $this->client->isEnabled() || ! $this->bridge->isAvailable()) {
             return 0;
         }
 
@@ -38,8 +38,8 @@ final class NativeCrashes
 
             $report = Bridge::decode($entry['json'] ?? null);
 
-            if ($report !== []) {
-                $this->client->captureEvent($report);
+            if ($report !== [] && $this->client->captureEventResult($report)->retryable) {
+                continue;
             }
 
             $ids[] = $entry['id'];
@@ -54,14 +54,17 @@ final class NativeCrashes
 
     /**
      * Crash the app on purpose, to check that crash reporting works. Returns false off-device.
+     *
+     * "exception" raises an NSException (iOS) or a RuntimeException on the main thread (Android).
+     * "fatal" calls fatalError() (iOS, a signal) or throws on a background thread (Android).
      */
-    public function crashForTest(): bool
+    public function crashForTest(string $kind = 'exception'): bool
     {
         if (! $this->bridge->isAvailable()) {
             return false;
         }
 
-        $this->bridge->call('NativeWatch.TestCrash');
+        $this->bridge->call('NativeWatch.TestCrash', ['kind' => $kind]);
 
         return true;
     }

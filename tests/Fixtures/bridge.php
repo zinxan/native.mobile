@@ -25,8 +25,22 @@ if (! function_exists('nativephp_call')) {
                 'webViewVersion' => '26.0',
             ])]),
             'NativeWatch.PendingCrashReports' => json_encode(['reports' => $GLOBALS['nativewatch_bridge']['reports']]),
+            'NativeWatch.GetConsent' => json_encode(['generation' => array_key_exists('generation', $GLOBALS['nativewatch_bridge']) ? $GLOBALS['nativewatch_bridge']['generation'] : str_repeat('a', 32)]),
+            'NativeWatch.SetConsent' => nativeWatchTestConsent(json_decode($parameters, true)['granted']),
             'NativeWatch.Broken' => json_encode(['status' => 'error', 'code' => 'x', 'message' => 'Broken', 'data' => []]),
             default => json_encode([]),
         };
     }
+}
+
+function nativeWatchTestConsent(bool $granted): string
+{
+    if ($GLOBALS['nativewatch_bridge']['consent_failure'] ?? false) {
+        return json_encode(['saved' => false], JSON_THROW_ON_ERROR);
+    }
+
+    $GLOBALS['nativewatch_bridge']['generation'] = $granted ? bin2hex(random_bytes(16)) : null;
+    $GLOBALS['nativewatch_bridge']['reports'] = [];
+
+    return json_encode(['saved' => true], JSON_THROW_ON_ERROR);
 }

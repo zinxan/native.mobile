@@ -4,13 +4,14 @@ import MetricKit
 /// Captures native crashes and keeps them on disk until PHP sends them to NativeWatch.
 ///
 /// NativePHP calls `install()` when the app starts (`ios.init_function` in nativephp.json).
-/// Objective-C exceptions are written the moment they happen. Hard crashes, such as a
-/// bad memory access or a Swift trap, arrive from MetricKit on the next launch.
+/// A maintained native recorder captures Objective-C exceptions and interrupted
+/// signal/Mach contexts. Reports are imported and sent on the next launch.
+/// MetricKit adds hangs and the crashes that no handler saw.
 enum NativeWatchCrashReporter {
     private static let maxReports = 20
     private static var installed = false
-    private static var previousHandler: (@convention(c) (NSException) -> Void)?
     private static let metricSubscriber = NativeWatchMetricSubscriber()
+    private static var metricsInstalled = false
 
     static var directory: URL {
         FileManager.default
@@ -22,23 +23,42 @@ enum NativeWatchCrashReporter {
         guard !installed else { return }
         installed = true
 
-        previousHandler = NSGetUncaughtExceptionHandler()
-        NSSetUncaughtExceptionHandler { exception in
-            NativeWatchCrashReporter.record(exception: exception)
-            NativeWatchCrashReporter.previousHandler?(exception)
-        }
+        if NativeWatchConsent.generation == nil { _ = disable() } else { _ = activate() }
+    }
 
-        MXMetricManager.shared.add(metricSubscriber)
+    static func activate() -> Bool {
+        NativeWatchConsent.withPermission { generation in
+            guard NativeWatchCrashRecorder.activate(generation) else { return false }
+            if !metricsInstalled {
+                metricsInstalled = true
+                MXMetricManager.shared.add(metricSubscriber)
+            }
+            return true
+        } ?? false
+    }
+
+    static func disable() -> Bool {
+        if metricsInstalled {
+            MXMetricManager.shared.remove(metricSubscriber)
+            metricsInstalled = false
+        }
+        return NativeWatchCrashRecorder.disableAndClear()
     }
 
     // MARK: - Recording
 
-    static func record(exception: NSException) {
+    /// The main thread was blocked so long that the user saw a frozen app.
+    static func record(hang: MXHangDiagnostic, at date: Date) {
+        let seconds = hang.hangDuration.converted(to: .seconds).value
+
         store(report(
-            type: exception.name.rawValue,
-            value: exception.reason ?? "",
-            frames: exception.callStackSymbols.map(frame(fromSymbol:)),
-            mechanism: "ios.nsexception"
+            type: "AppHang",
+            value: String(format: "The main thread was blocked for %.1f seconds.", seconds),
+            frames: frames(from: hang.callStackTree),
+            mechanism: "ios.metrickit.hang",
+            occurredAt: date,
+            release: hang.metaData.applicationBuildVersion,
+            extra: ["hang_seconds": seconds]
         ))
     }
 
@@ -71,8 +91,13 @@ enum NativeWatchCrashReporter {
     // MARK: - Reports on disk
 
     static func pendingReports() -> [[String: String]] {
-        reportFiles().prefix(maxReports).compactMap { url in
-            guard let json = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        guard let generation = NativeWatchConsent.generation else { return [] }
+        NativeWatchCrashRecorder.collect()
+        return reportFiles().prefix(maxReports).compactMap { url in
+            guard let data = try? Data(contentsOf: url),
+                  let report = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  report["_nativewatch_consent_generation"] as? String == generation,
+                  let json = String(data: data, encoding: .utf8) else { return nil }
             return ["id": url.deletingPathExtension().lastPathComponent, "json": json]
         }
     }
@@ -83,16 +108,21 @@ enum NativeWatchCrashReporter {
         }
     }
 
-    private static func store(_ report: [String: Any]) {
-        guard let id = report["event_id"] as? String,
-              let data = try? JSONSerialization.data(withJSONObject: report) else { return }
-
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try? data.write(to: directory.appendingPathComponent("\(id).json"), options: .atomic)
-
-        for url in reportFiles().dropLast(maxReports) {
-            try? FileManager.default.removeItem(at: url)
-        }
+    @discardableResult
+    static func store(_ report: [String: Any]) -> Bool {
+        NativeWatchConsent.withPermission { generation in
+            var report = report
+            if let original = report["_nativewatch_consent_generation"] as? String, original != generation { return false }
+            report["_nativewatch_consent_generation"] = generation
+            guard let id = report["event_id"] as? String,
+                  let data = try? JSONSerialization.data(withJSONObject: report) else { return false }
+            do {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                try data.write(to: directory.appendingPathComponent("\(id).json"), options: .atomic)
+                for url in reportFiles().dropLast(maxReports) { try? FileManager.default.removeItem(at: url) }
+                return true
+            } catch { return false }
+        } ?? false
     }
 
     private static func reportFiles() -> [URL] {
@@ -112,7 +142,7 @@ enum NativeWatchCrashReporter {
 
     // MARK: - Building a report
 
-    private static func report(
+    static func report(
         type: String,
         value: String,
         frames: [[String: Any]],
@@ -144,23 +174,16 @@ enum NativeWatchCrashReporter {
     }
 
     /// Debug builds of Xcode move the code of the app into "<executable>.debug.dylib".
-    private static func isAppBinary(_ binary: String) -> Bool {
+    static func isAppBinary(_ binary: String) -> Bool {
         binary == appBinaryName || binary == "\(appBinaryName).debug.dylib"
-    }
-
-    /// Parses a line of `callStackSymbols`, such as "3   MyApp   0x0000000104b2c3d4 symbol + 52".
-    private static func frame(fromSymbol line: String) -> [String: Any] {
-        let parts = line.split(separator: " ", omittingEmptySubsequences: true)
-        let binary = parts.count > 1 ? String(parts[1]) : "unknown"
-        let symbol = parts.count > 3 ? parts[3...].joined(separator: " ") : line
-
-        return ["file": binary, "line": 0, "function": symbol, "in_app": isAppBinary(binary)]
     }
 
     /// Flattens the call stack tree of the crashed thread into frames, the crash site first.
     private static func frames(from tree: MXCallStackTree) -> [[String: Any]] {
-        guard let root = try? JSONSerialization.jsonObject(with: tree.jsonRepresentation()) as? [String: Any],
-              let stacks = root["callStacks"] as? [[String: Any]] else { return [] }
+        guard let json = try? JSONSerialization.jsonObject(with: tree.jsonRepresentation()) as? [String: Any] else { return [] }
+        let root = json["callStackTree"] as? [String: Any] ?? json
+        guard let stacks = root["callStacks"] as? [[String: Any]] else { return [] }
+        let architectures = NativeWatchImages.architectures()
 
         let crashed = stacks.first { $0["threadAttributed"] as? Bool == true } ?? stacks.first
         var frames: [[String: Any]] = []
@@ -168,15 +191,25 @@ enum NativeWatchCrashReporter {
 
         while let frame = next, frames.count < 100 {
             let binary = frame["binaryName"] as? String ?? "unknown"
-            let offset = frame["offsetIntoBinaryTextSegment"] as? UInt64 ?? 0
+            let offset = frame["offsetIntoBinaryTextSegment"] as? UInt64
 
             // The offset stays the same between launches of one build, the address does not (ASLR).
-            frames.append([
+            var value: [String: Any] = [
                 "file": binary,
                 "line": 0,
-                "function": "\(binary) + \(offset)",
+                "function": offset.map { "\(binary) + \($0)" } ?? binary,
                 "in_app": isAppBinary(binary),
-            ])
+            ]
+            if let offset, offset <= 0xffffffffffff,
+               let id = frame["binaryUUID"] as? String, let uuid = UUID(uuidString: id),
+               let architecture = architectures[uuid] {
+                value["native"] = [
+                    "image_uuid": uuid.uuidString.lowercased(), "architecture": architecture.rawValue,
+                    "instruction_offset": String(format: "0x%llx", offset),
+                    "address_kind": frames.isEmpty ? "instruction" : "return_address",
+                ]
+            }
+            frames.append(value)
 
             next = (frame["subFrames"] as? [[String: Any]])?.first
         }
@@ -198,7 +231,7 @@ enum NativeWatchCrashReporter {
         }
     }
 
-    private static func signalName(_ signal: Int32) -> String {
+    static func signalName(_ signal: Int32) -> String {
         switch signal {
         case SIGABRT: return "SIGABRT"
         case SIGSEGV: return "SIGSEGV"
@@ -216,8 +249,14 @@ enum NativeWatchCrashReporter {
 final class NativeWatchMetricSubscriber: NSObject, MXMetricManagerSubscriber {
     func didReceive(_ payloads: [MXDiagnosticPayload]) {
         for payload in payloads {
-            for crash in payload.crashDiagnostics ?? [] {
-                NativeWatchCrashReporter.record(diagnostic: crash, at: payload.timeStampEnd)
+            NativeWatchConsent.withPermission { _ in
+                guard NativeWatchConsent.accepts(intervalBeginning: payload.timeStampBegin) else { return }
+                for crash in payload.crashDiagnostics ?? [] {
+                    NativeWatchCrashReporter.record(diagnostic: crash, at: payload.timeStampEnd)
+                }
+                for hang in payload.hangDiagnostics ?? [] {
+                    NativeWatchCrashReporter.record(hang: hang, at: payload.timeStampEnd)
+                }
             }
         }
     }

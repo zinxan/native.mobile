@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use ZXN\NativeWatch\Core\Client;
 use ZXN\NativeWatch\Mobile\Bridge;
 use ZXN\NativeWatch\Mobile\MobileServiceProvider;
 use ZXN\NativeWatch\Mobile\NativeCrashes;
@@ -39,6 +40,7 @@ beforeEach(function (): void {
     $GLOBALS['nativewatch_bridge'] = ['reports' => [], 'calls' => []];
 
     config([
+        'nativephp-internal.running' => true,
         'nativewatch.key' => 'nw_mobile',
         'nativewatch.url' => 'https://zxguard.test',
         'nativewatch.outbox.path' => temporaryOutbox(),
@@ -67,6 +69,18 @@ it('sends the native crashes of an earlier launch after the first response', fun
     );
 });
 
+it('preserves exact symbolication evidence through native collection and event completion', function (): void {
+    $entry = nativeCrashReport();
+    $report = json_decode($entry['json'], true, flags: JSON_THROW_ON_ERROR);
+    $native = ['image_uuid' => '1352463a-578e-3bdc-8944-fb98c0c96b31', 'architecture' => 'arm64', 'instruction_offset' => '0x1f580', 'address_kind' => 'return_address'];
+    $report['exception']['frames'][1]['native'] = $native;
+    $entry['json'] = json_encode($report, JSON_THROW_ON_ERROR);
+    $GLOBALS['nativewatch_bridge']['reports'] = [$entry];
+    $this->app->register(MobileServiceProvider::class);
+    $this->app->terminate();
+    Http::assertSent(fn (Request $request): bool => $request['exception']['frames'][1]['native'] === $native);
+});
+
 it('collects native crashes once per launch', function (): void {
     $GLOBALS['nativewatch_bridge']['reports'] = [nativeCrashReport()];
     $this->app->register(MobileServiceProvider::class);
@@ -90,9 +104,39 @@ it('crashes the app on purpose through the bridge', function (): void {
     $this->app->register(MobileServiceProvider::class);
 
     expect(resolve(NativeCrashes::class)->crashForTest())->toBeTrue()
-        ->and($GLOBALS['nativewatch_bridge']['calls'])->toContain(['NativeWatch.TestCrash', []]);
+        ->and(resolve(NativeCrashes::class)->crashForTest('fatal'))->toBeTrue()
+        ->and($GLOBALS['nativewatch_bridge']['calls'])
+        ->toContain(['NativeWatch.TestCrash', ['kind' => 'exception']])
+        ->toContain(['NativeWatch.TestCrash', ['kind' => 'fatal']]);
 });
 
 it('treats a bridge error as an empty answer', function (): void {
     expect(new Bridge()->call('NativeWatch.Broken'))->toBe([]);
 });
+
+it('retains the native report when both the outbox and delivery fail', function (): void {
+    $path = temporaryOutbox().'/not-a-directory';
+    file_put_contents($path, 'occupied');
+    config(['nativewatch.outbox.path' => $path, 'nativewatch.url' => 'https://offline.test']);
+    Http::fake(['offline.test/*' => Http::response(status: 503)]);
+    $GLOBALS['nativewatch_bridge']['reports'] = [nativeCrashReport()];
+    $this->app->register(MobileServiceProvider::class);
+
+    expect(resolve(NativeCrashes::class)->collect())->toBe(0);
+
+    expect(array_column($GLOBALS['nativewatch_bridge']['calls'], 0))->not->toContain('NativeWatch.DeleteCrashReports');
+});
+
+it('deletes native reports that the app deliberately discards', function (bool $sampledOut): void {
+    config(['nativewatch.sample_rate' => $sampledOut ? 0.0 : 1.0]);
+    $GLOBALS['nativewatch_bridge']['reports'] = [nativeCrashReport()];
+    $this->app->register(MobileServiceProvider::class);
+
+    if (! $sampledOut) {
+        resolve(Client::class)->beforeSend(fn (array $event): null => null);
+    }
+
+    expect(resolve(NativeCrashes::class)->collect())->toBe(1)
+        ->and($GLOBALS['nativewatch_bridge']['calls'])->toContain(['NativeWatch.DeleteCrashReports', ['ids' => [nativeCrashReport()['id']]]]);
+    Http::assertNothingSent();
+})->with([false, true]);

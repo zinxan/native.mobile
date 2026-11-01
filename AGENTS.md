@@ -16,7 +16,10 @@
 ## 1. Rules
 
 - Put a feature that desktop apps also need in `native-core`, not here.
-- Call the bridge only through `nativephp_call()`, behind `function_exists('nativephp_call')`. Outside a device (tests, the web preview) the function does not exist, and the SDK reports the platform `mobile`.
+- Call the bridge only through `Bridge`. NativePHP 4 defines a PHP Jump helper in
+  browser previews too. Function presence alone does not establish a device:
+  require the internal extension, the native runtime flag or an explicit Jump
+  relay. Native test fixtures must set `nativephp-internal.running=true`.
 - Read the device once per process. `MobileContext` caches it, because each bridge call costs a round trip.
 - Clear the scope between requests. NativePHP mobile keeps one PHP process alive (`Native\Mobile\Runtime`), so breadcrumbs and users leak into the next request without `Runtime::onReset()`. Keep the hook in `MobileServiceProvider::bootPlatform()`.
 - Send the device name and the device ID only when `send_default_pii` is `true`.
@@ -35,7 +38,8 @@ A crashing process can only write a file. Sending happens on the next launch, in
 
 Sources of crashes:
 
-- iOS: Objective-C exceptions through `NSSetUncaughtExceptionHandler` (written at once, then the previous handler runs), and hard crashes (bad memory access, Swift traps) through MetricKit, which iOS delivers on the next launch. MetricKit does not deliver on the simulator. Do not add signal handlers: they are not safe and they fight other crash reporters.
+- iOS: KSCrash owns Objective-C, Mach and signal capture and unwinding. NativeWatch admits fatal reports using preinitialized integer atomics, preserves the original consent interval and imports an allowlisted event after relaunch. Keep binary UUID, architecture, offset and instruction/return-address kind together. Use the exception-origin backtrace for NSException, not the later handler's stack. MetricKit adds delayed device diagnostics; only attach an architecture when its exact UUID is known.
+- Keep the signal handler async-signal-safe: no allocation, no locks, no Swift strings or arrays, no Objective-C.
 - Android: uncaught JVM exceptions through `Thread.setDefaultUncaughtExceptionHandler` (written at once, then the previous handler runs), and ANRs and native (NDK) crashes through `ApplicationExitInfo` (Android 11 and later) on the next launch.
 
 Rules:
@@ -44,9 +48,9 @@ Rules:
 - Mark a frame `in_app` when it belongs to the app: the executable of the bundle on iOS, the package name of the app on Android.
 - Add a bridge function to `nativephp.json`, Swift and Kotlin together. Give each Android bridge class `"android_params": ["context"]`.
 - Never let crash reporting throw. Wrap native file work in `try?` (Swift) or `try` (Kotlin), and always run the previous handler.
-- Type-check Swift before you finish: `xcrun --sdk iphonesimulator swiftc -typecheck -target arm64-apple-ios18.2-simulator <stub> resources/ios/Sources/*.swift`, with a stub file that declares `BridgeFunction` and `BridgeResponse` the way `vendor/nativephp/mobile/resources/xcode/NativePHP/Bridge/BridgeRouter.swift` does.
+- Compile the actual iOS example with its SwiftPM dependencies and verify a Release crash/relaunch through the receiver before finishing native changes. A standalone Swift stub cannot establish compatibility with the recorder.
 - Validate the plugin from `examples/mobile`: `php artisan native:plugin:validate vendor/zinxan/native-mobile`.
-- Next: upload dSYM files and ProGuard mappings at build time (a `post_build` hook) so the server can symbolicate native frames.
+- Upload dSYMs only from CI using `nativewatch:symbols` and the private CI token; read `docs/symbolication.md`. ProGuard/Android native mapping support is separate.
 
 ---
 

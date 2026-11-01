@@ -50,19 +50,24 @@ object NativeWatchCrashReporter {
     fun directory(context: Context): File = File(context.filesDir, "nativewatch/crashes")
 
     fun record(context: Context, throwable: Throwable, thread: Thread) {
-        store(context, report(
-            context = context,
-            type = throwable.javaClass.name,
-            value = throwable.message ?: "",
-            frames = frames(context, throwable),
-            mechanism = "android.uncaught",
-            extra = JSONObject().put("thread", thread.name).put("previous", causes(throwable)),
-        ))
+        NativeWatchConsent.withPermission(context) { _ ->
+            store(context, report(
+                context = context,
+                type = throwable.javaClass.name,
+                value = throwable.message ?: "",
+                frames = frames(context, throwable),
+                mechanism = "android.uncaught",
+                extra = JSONObject().put("thread", thread.name).put("previous", causes(throwable)),
+            ))
+        }
     }
 
     fun recordPastExits(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        NativeWatchConsent.withPermission(context) { collectPastExits(context) }
+    }
 
+    private fun collectPastExits(context: Context) {
         val preferences = context.getSharedPreferences("nativewatch", Context.MODE_PRIVATE)
         val lastSeen = preferences.getLong("last_exit_timestamp", 0L)
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -73,7 +78,7 @@ object NativeWatchCrashReporter {
 
         if (lastSeen == 0L) return
 
-        exits.filter { it.timestamp > lastSeen }.forEach { exit ->
+        exits.filter { it.timestamp > lastSeen && it.timestamp >= NativeWatchConsent.grantedAt(context) }.forEach { exit ->
             val (type, mechanism) = when (exit.reason) {
                 ApplicationExitInfo.REASON_ANR -> "ApplicationNotResponding" to "android.anr"
                 ApplicationExitInfo.REASON_CRASH_NATIVE -> "NativeCrash" to "android.native"
@@ -99,26 +104,38 @@ object NativeWatchCrashReporter {
     }
 
     fun pending(context: Context): List<Map<String, String>> =
-        files(context).take(MAX_REPORTS).mapNotNull { file ->
-            try {
-                mapOf("id" to file.nameWithoutExtension, "json" to file.readText())
-            } catch (_: Throwable) {
-                null
+        NativeWatchConsent.withPermission(context) { generation ->
+            files(context).take(MAX_REPORTS).mapNotNull { file ->
+                try {
+                    val json = file.readText()
+                    if (JSONObject(json).optString("_nativewatch_consent_generation") != generation) null
+                    else mapOf("id" to file.nameWithoutExtension, "json" to json)
+                } catch (_: Throwable) {
+                    null
+                }
             }
-        }
+        } ?: emptyList()
 
     fun delete(context: Context, ids: List<String>) {
         ids.filter { !it.contains('/') }.forEach { File(directory(context), "$it.json").delete() }
     }
 
     private fun store(context: Context, report: JSONObject) {
-        val directory = directory(context)
-        directory.mkdirs()
+        NativeWatchConsent.withPermission(context) { generation ->
+            report.put("_nativewatch_consent_generation", generation)
+            val directory = directory(context)
+            directory.mkdirs()
 
-        File(directory, "${report.getString("event_id")}.json").writeText(report.toString())
+            // Write to a temporary file first, so a report that is cut off by the dying process is never read.
+            val id = report.getString("event_id")
+            val temporary = File(directory, "$id.tmp")
+            temporary.writeText(report.toString())
+            temporary.renameTo(File(directory, "$id.json"))
 
-        files(context).dropLast(MAX_REPORTS).forEach { it.delete() }
+            files(context).dropLast(MAX_REPORTS).forEach { it.delete() }
+        }
     }
+
 
     private fun files(context: Context): List<File> =
         directory(context).listFiles { file -> file.extension == "json" }
