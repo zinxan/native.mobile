@@ -13,7 +13,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "zinxan/native-core": "^0.1"
+        "zinxan/native-core": "^0.2"
     },
     "suggest": {
         "nativephp/mobile": "The NativePHP mobile runtime that this SDK reports for."
@@ -36,5 +36,11 @@
             "manifest": "nativephp.json"
         }
     },
-    "minimum-stability": "stable"
+    "minimum-stability": "stable",
+    "homepage": "https://native.watch",
+    "support": {
+        "docs": "https://native.watch/docs",
+        "issues": "https://github.com/zinxan/native.mobile/issues",
+        "source": "https://github.com/zinxan/native.mobile"
+    }
 }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace ZXN\NativeWatch\Mobile;
 
 use JsonException;
+use ReflectionFunction;
+use Throwable;
 
 final readonly class Bridge
 {
@@ -30,11 +32,15 @@ final readonly class Bridge
     }
 
     /**
-     * Determine if the app runs on a device, where native code answers.
+     * Determine if the app has a device bridge or an explicitly configured Jump relay.
      */
     public function isAvailable(): bool
     {
-        return function_exists('nativephp_call');
+        return function_exists('nativephp_call') && (
+            new ReflectionFunction('nativephp_call')->isInternal()
+            || config('nativephp-internal.running', false)
+            || getenv('JUMP_BRIDGE_PORT') !== false
+        );
     }
 
     /**
@@ -51,7 +57,7 @@ final readonly class Bridge
 
         try {
             $response = self::decode(nativephp_call($function, json_encode($parameters, JSON_THROW_ON_ERROR)));
-        } catch (JsonException) {
+        } catch (Throwable) {
             return [];
         }
 

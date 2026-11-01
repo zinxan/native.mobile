@@ -9,6 +9,13 @@ namespace Native\Mobile {
     }
 }
 
+namespace Native\Mobile\Events\PushNotification {
+    final class TokenGenerated
+    {
+        public function __construct(public string $token, public ?string $id = null) {}
+    }
+}
+
 namespace {
     function nativephp_call(string $method, string $parameters): string|false|null
     {
