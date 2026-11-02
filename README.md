@@ -4,6 +4,9 @@
 
 Error tracking for NativePHP iOS and Android apps. Errors go to [NativeWatch](https://native.watch).
 
+**Start with [iOS consent and native UI setup](docs/ios-consent.md).** It includes
+copyable NativePHP 4 components, refusal/withdrawal behavior and a device test checklist.
+
 ```bash
 composer require zinxan/native-mobile
 ```
