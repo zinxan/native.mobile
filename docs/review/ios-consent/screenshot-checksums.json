@@ -1,0 +1,18 @@
+[
+  {
+    "file": "release-consent-off.png",
+    "sha256": "31f6f0f200546b8f6a53df921d93a19af8bd40c05943fcaaad2d4e3988bd2eda"
+  },
+  {
+    "file": "release-denied-error.png",
+    "sha256": "b87246cb4423fcd03113e7455f04e17d88ee2764a62e8ff953b3d0830dd25dff"
+  },
+  {
+    "file": "release-consent-on.png",
+    "sha256": "6b3b3c11d740264af7b262227276a1184241c49e8b9fc72e99fe522998a1d452"
+  },
+  {
+    "file": "release-allowed-error.png",
+    "sha256": "8149131e2a8c264cc7650e9b359c8344f63eb674226cbf267889d84763cb12f5"
+  }
+]

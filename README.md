@@ -38,6 +38,8 @@ component loop and drains queued diagnostics after real UI interactions,
 while preserving the normal error overlay. Add it to every screen, including
 nested components, or to your app's shared native component base. See the
 [native UI setup](docs/ios-consent.md#native-ui-error-capture).
+The [Release Simulator acceptance record](docs/review/ios-consent/ios-simulator-acceptance.md)
+shows the actual JabKeeper consent/error checks and states their limits.
 
 Native crashes (Objective-C and Swift on iOS, uncaught exceptions, ANRs and NDK crashes on Android) are stored on the device and sent the next time the app opens.
 

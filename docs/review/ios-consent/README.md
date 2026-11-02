@@ -47,5 +47,6 @@ parent host fixture so the opt-in trait is actually checked, without ignoring
 unused-trait diagnostics. Pint, PHP syntax and diff checks pass.
 
 The guide still requires real compiled iOS failure and delivery verification
-before shipping. Screenshots of the rebuilt app and production collector are
-separate acceptance evidence and do not follow from these unit tests.
+before shipping. The separate [Release Simulator acceptance record](ios-simulator-acceptance.md)
+contains actual JabKeeper checks, original screenshots and collector event IDs.
+Those results do not follow from the unit tests above.
