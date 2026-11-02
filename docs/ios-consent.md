@@ -5,10 +5,9 @@ You do not need to write Swift, request an advertising identifier, or call an
 iOS permission dialog. Add your app's disclosure and optional control before
 allowing collection. Keep the app usable when the user declines.
 
-The native UI adapter below is new in mobile SDK **0.2.1**. Version 0.2.0 has the
-consent API but not `ReportsNativeUiErrors`. Until the 0.2.1 tag is published,
-the adapter is available only in this release candidate. After publication,
-require `zinxan/native-mobile:^0.2.1` and rebuild the native app.
+The native UI adapter below is available in mobile SDK **0.2.1 and later**.
+Version 0.2.0 has the consent API but not `ReportsNativeUiErrors`.
+Require `zinxan/native-mobile:^0.2.1` and rebuild the native app.
 
 ## Install and rebuild
 
