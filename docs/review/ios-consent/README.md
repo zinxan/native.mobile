@@ -1,7 +1,7 @@
 # Consent example verification
 
-Verified on 2 November 2026 against NativePHP Mobile 4.5, `zinxan/native-mobile`
-0.2.0 and `zinxan/native-core` 0.2.1, installed in JabKeeper's existing app.
+Verified on 2 November 2026 against NativePHP Mobile 4.5 and `zinxan/native-core`
+0.2.1, using this PR's mobile SDK source and JabKeeper's installed dependencies.
 
 The copied action and native component were loaded directly from this repository.
 Its example Blade view was registered as a Laravel view location. The example
@@ -21,12 +21,25 @@ App Review approval. The guide explicitly requires the real iOS verification
 procedure for those boundaries.
 
 The installed plugin's existing native consent implementation and bridge
-manifest were inspected. No new runtime API or fallback was needed. The guide
-uses the existing public facade and documents archive/privacy declarations as
-app responsibilities rather than claiming the plugin configures them.
+manifest were inspected. The consent example uses the existing public facade.
+The guide documents archive/privacy declarations as app responsibilities rather
+than claiming the plugin configures them.
 
-The surrounding NativePHP 4.5 component runtime can catch its own UI exceptions
-without Laravel reporting and keep a request open. The guide explicitly
-separates this unresolved error/delivery boundary from the tested consent
-component. This documentation is not evidence of automatic native UI exception
-coverage or approval to ship the surrounding runtime integration.
+The NativePHP 4.5 component runtime catches UI exceptions without Laravel
+reporting and keeps its PHP request open. This PR adds the explicit
+`ReportsNativeUiErrors` adapter and guarded screen lifecycle delivery hooks.
+The complete mobile package suite passes 38 tests with 99 assertions, including
+new parent-boundary tests for overlay preservation, original exception reporting,
+same-object repaint deduplication, Laravel's do-not-report policy, declined
+consent, offline retry on a later interaction, scope clearing, previous native
+and PHP fatal collection before the next screen waits, SDK failure containment
+and a separate process without NativePHP installed. HTTP is faked in these
+library tests; they are not native crash acceptance evidence.
+
+PHPStan level 7 passes with zero errors. Its analysis includes a typed native
+parent host fixture so the opt-in trait is actually checked, without ignoring
+unused-trait diagnostics. Pint, PHP syntax and diff checks pass.
+
+The guide still requires real compiled iOS failure and delivery verification
+before shipping. Screenshots of the rebuilt app and production collector are
+separate acceptance evidence and do not follow from these unit tests.

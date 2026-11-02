@@ -64,14 +64,41 @@ The Pest example uses your app's `Tests\TestCase`, the real SDK client and a
 controlled consent boundary. It tests PHP/native-component behavior, not the
 compiled Swift reporter. Run it with `php artisan test --filter=DiagnosticsTest`.
 
-Native UI consent and native UI error capture are separate boundaries. NativePHP
-4.5 can catch component exceptions before Laravel's exception handler and keep
-the component's PHP request open. A working toggle does not establish that such
-errors are reported or that a response-termination flush runs. Exercise the
-actual failure and confirm collection and delivery in your compiled app. An
-application catch that deliberately handles an error must use `report($error)`
-or `NativeWatch::captureException($error)` if it should be reported; verify the
-runtime's delivery lifecycle separately. Do not claim coverage from a CLI test.
+## Native UI error capture
+
+NativePHP 4.5 catches component errors itself and keeps one PHP request open
+while its native event loop waits. Laravel's normal exception and response
+termination hooks do not cover every interaction in that loop.
+
+Mobile SDK **0.2.1 and later** provides an explicit adapter. Use the trait in each
+native component, including child components, or in your own shared base:
+
+```php
+use Native\Mobile\Edge\NativeComponent;
+use ZXN\NativeWatch\Mobile\Concerns\ReportsNativeUiErrors;
+
+abstract class AppNativeComponent extends NativeComponent
+{
+    use ReportsNativeUiErrors;
+}
+```
+
+Make your app's screens extend that base. The adapter preserves the parent error
+overlay, reports the original exception through Laravel's reporting policy, and
+avoids reporting a repaint of the same exception twice. It stores activities and
+attempts delivery after UI/native callbacks; screen lifecycle events also collect
+previous native/PHP fatal reports and drain the outbox before the loop waits.
+Scope is cleared between interactions/screens. The adapter never records native
+tree or event payloads, and collection/delivery remains behind diagnostic consent.
+Delivery attempts use the configured SDK network timeouts. They run after the
+parent interaction/error screen, while the PHP event loop still owns that thread.
+
+An app catch that handles an error without displaying the component error screen
+must still call `report($error)` or `NativeWatch::captureException($error)` if it
+should be reported. Native SDK callbacks, native local notifications and bridge
+calls are not automatically Laravel HTTP requests, jobs or mail events. Report
+only categories the app actually uses, and verify its real failure and delivery
+paths in the compiled app. A working toggle or CLI test is not that evidence.
 
 For an existing Settings component, the essential calls are:
 

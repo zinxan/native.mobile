@@ -9,9 +9,12 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Native\Mobile\Edge\NativeComponent;
 use ZXN\NativeWatch\Core\Laravel\NativeWatch;
+use ZXN\NativeWatch\Mobile\Concerns\ReportsNativeUiErrors;
 
 final class Diagnostics extends NativeComponent
 {
+    use ReportsNativeUiErrors;
+
     public bool $sharing = false;
 
     public string $saveError = '';

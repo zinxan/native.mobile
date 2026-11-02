@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace ZXN\NativeWatch\Mobile;
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Native\Mobile\Runtime;
+use Throwable;
 use ZXN\NativeWatch\Core\Client;
 use ZXN\NativeWatch\Core\Config;
 use ZXN\NativeWatch\Core\Contracts\ContextProvider;
@@ -53,6 +55,8 @@ final class MobileServiceProvider extends NativeWatchServiceProvider
         $this->app->singleton(NativeCrashes::class);
         $this->app->singleton(FatalErrors::class);
 
+        $this->listenForNativeUiScreens();
+
         $errorLog = $this->app->storagePath('nativewatch/php-errors.log');
 
         // Only on a device. The embedded PHP of NativePHP reports the "cli" SAPI, so
@@ -80,5 +84,28 @@ final class MobileServiceProvider extends NativeWatchServiceProvider
                 $client->flush();
             }
         });
+    }
+
+    private function listenForNativeUiScreens(): void
+    {
+        $events = $this->app->make(Dispatcher::class);
+
+        foreach ([
+            'Native\\Mobile\\Events\\Screen\\ScreenMounted',
+            'Native\\Mobile\\Events\\Screen\\ScreenResumed',
+            'Native\\Mobile\\Events\\Screen\\ScreenUnmounted',
+        ] as $event) {
+            if (! class_exists($event)) {
+                continue;
+            }
+
+            $events->listen($event, function (): void {
+                try {
+                    $this->app->make(NativeUiLifecycle::class)->handle();
+                } catch (Throwable) {
+                    // Optional telemetry cannot interrupt navigation.
+                }
+            });
+        }
     }
 }

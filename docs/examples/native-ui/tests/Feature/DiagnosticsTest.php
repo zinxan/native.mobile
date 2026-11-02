@@ -6,7 +6,6 @@ use App\NativeComponents\Diagnostics;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Native\Mobile\Testing\Native;
-use Tests\TestCase;
 use ZXN\NativeWatch\Core\Client;
 use ZXN\NativeWatch\Core\Config;
 use ZXN\NativeWatch\Core\Contracts\ContextProvider;
@@ -15,7 +14,7 @@ use ZXN\NativeWatch\Core\EventFactory;
 use ZXN\NativeWatch\Core\Laravel\NativeWatch;
 use ZXN\NativeWatch\Core\Transport\Transport;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function nativeWatchConsentExampleClient(ReportingConsent $consent): void
 {
