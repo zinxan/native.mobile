@@ -14,5 +14,9 @@
   {
     "file": "release-allowed-error.png",
     "sha256": "8149131e2a8c264cc7650e9b359c8344f63eb674226cbf267889d84763cb12f5"
+  },
+  {
+    "file": "release-offline-error.png",
+    "sha256": "6d300c2444218007b2fe32393f9130ccb159de9f41748d977b7827e3570767a2"
   }
 ]

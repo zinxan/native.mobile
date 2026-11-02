@@ -1,0 +1,22 @@
+{
+  "pending": 1,
+  "events": [
+    {
+      "filename": "1793631170.296966-77a274b2.json",
+      "keys": [
+        "event_id",
+        "timestamp",
+        "level",
+        "platform",
+        "release",
+        "environment",
+        "sdk",
+        "context",
+        "exception",
+        "_nativewatch_consent_generation"
+      ]
+    }
+  ],
+  "event_id": "6d0cb2e2-11ee-47d9-a3c1-faf87890114e",
+  "outbox_after_reconnect": 0
+}

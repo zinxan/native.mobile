@@ -17,11 +17,21 @@ handwritten events or inserting dashboard rows.
 | Diagnostics on, then the same normal Weight-screen failure | Production issue **49** grew from one to two occurrences. New event: `ab99bdbb-b1d4-43c2-afb4-1f7ecf522ea2`. |
 | Successful SQLite query delayed by real database contention | The Queries page received the actual **11,203 ms** query activity. This was not a manually fabricated duration. |
 | Release process receives SIGABRT, then the app is relaunched | The native crash was ingested as production issue **52**, event `eec447ce-a8b5-452d-8ad7-7c045a2c4044`. |
+| The Release app cannot reach the receiver, then the normal Weight screen fails | One real QueryException remained in the app's durable outbox, event `6d0cb2e2-11ee-47d9-a3c1-faf87890114e`. The event was absent from production and issue **49** remained at two occurrences. |
+| The table is restored and the app is relaunched with connectivity | The outbox drained from one to zero. The exact pending event arrived once and production issue **49** grew from two to three occurrences. |
+| Consent is withdrawn, then the Release process receives SIGABRT | No pending native-recorder files remained. Relaunching and granting consent again did not send that crash; issue **52** stayed at one native-crash occurrence. |
 
 The native UI adapter therefore has real Release Simulator evidence for the
 missing component-error reporting path, consent gating, a query activity and
-next-launch native crash ingestion. The PHP-only adapter does not change the
-Swift native recorder.
+next-launch native crash ingestion, offline retention/retry and withdrawal of
+native crash reporting. The PHP-only adapter does not change the Swift native
+recorder.
+
+The offline run used an unreachable HTTPS proxy scoped only to the Simulator
+app process. It blocked that app's real network requests without changing the
+Mac's network settings. This establishes delivery retry after an app-level
+transport failure and relaunch. It is not a physical-device flight-mode test.
+The original outbox read-back is in [offline-retention.json](offline-retention.json).
 
 ## Original screenshots
 
@@ -35,6 +45,7 @@ count evidence above.
 - [Real Weight-screen error while sharing is off](screenshots/release-denied-error.png)
 - [Diagnostics on](screenshots/release-consent-on.png)
 - [Real Weight-screen error while sharing is on](screenshots/release-allowed-error.png)
+- [Real Weight-screen error while the receiver is unreachable](screenshots/release-offline-error.png)
 
 ![The real JabKeeper Settings diagnostics choice enabled](screenshots/release-consent-on.png)
 
@@ -46,7 +57,7 @@ ingestion are verified; successful native function/file/line symbolication is
 not established by this record.
 
 Physical-device flight mode, MetricKit delivery and Android behavior were not
-tested in this acceptance run. The offline/retry cases in the library suite use
-controlled HTTP failures; they are not evidence of a physical flight-mode test.
-Do not describe these results as covering every activity category or a complete
-platform release checklist.
+tested in this acceptance run. The library suite's controlled HTTP failures and
+the actual Simulator app's unreachable-proxy test are separate checks; neither
+is evidence of a physical flight-mode test. Do not describe these results as
+covering every activity category or a complete platform release checklist.
