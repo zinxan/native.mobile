@@ -16,6 +16,23 @@ namespace Native\Mobile\Events\PushNotification {
     }
 }
 
+namespace Native\Mobile\Events\Screen {
+    final class ScreenMounted
+    {
+        public function __construct(public string $component, public ?string $uri = null) {}
+    }
+
+    final class ScreenResumed
+    {
+        public function __construct(public string $component, public ?string $uri = null) {}
+    }
+
+    final class ScreenUnmounted
+    {
+        public function __construct(public string $component, public ?string $uri = null) {}
+    }
+}
+
 namespace {
     function nativephp_call(string $method, string $parameters): string|false|null
     {

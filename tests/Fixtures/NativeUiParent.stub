@@ -1,0 +1,89 @@
+<?php
+
+declare(strict_types=1);
+
+namespace ZXN\NativeWatch\Mobile\Tests\Fixtures;
+
+use Closure;
+use RuntimeException;
+use Throwable;
+use ZXN\NativeWatch\Mobile\Concerns\ReportsNativeUiErrors;
+
+/** A typed parent boundary matching NativePHP 4.5's protected dispatch API. */
+class NativeUiParent
+{
+    /** @var list<Throwable> */
+    public array $painted = [];
+
+    /** @var list<array<array-key, mixed>> */
+    public array $uiEvents = [];
+
+    /** @var list<array<array-key, mixed>> */
+    public array $nativeEvents = [];
+
+    public ?Closure $onUiEvent = null;
+
+    public ?Closure $onNativeEvent = null;
+
+    public bool $paintingFails = false;
+
+    public function renderErrorScreen(Throwable $e): void
+    {
+        $this->painted[] = $e;
+
+        if ($this->paintingFails) {
+            throw new RuntimeException('The parent overlay failed.');
+        }
+    }
+
+    /** @param array<array-key, mixed> $event */
+    protected function dispatchUiEvent(array $event): void
+    {
+        $this->uiEvents[] = $event;
+
+        ($this->onUiEvent ?? static fn (): null => null)();
+    }
+
+    /** @param array<array-key, mixed> $event */
+    protected function dispatchNativeEvent(array $event): void
+    {
+        $this->nativeEvents[] = $event;
+
+        ($this->onNativeEvent ?? static fn (): null => null)();
+    }
+}
+
+final class NativeUiScreen extends NativeUiParent
+{
+    use ReportsNativeUiErrors;
+
+    /** @param array<array-key, mixed> $event */
+    public function press(array $event = []): void
+    {
+        try {
+            $this->dispatchUiEvent($event);
+        } catch (Throwable $exception) {
+            $this->renderErrorScreen($exception);
+        }
+    }
+
+    /** @param array<array-key, mixed> $event */
+    public function receiveNative(array $event = []): void
+    {
+        try {
+            $this->dispatchNativeEvent($event);
+        } catch (Throwable $exception) {
+            $this->renderErrorScreen($exception);
+        }
+    }
+
+    public function dispatchUiWithoutOverlay(): void
+    {
+        $this->dispatchUiEvent([]);
+    }
+
+    public function dispatchNativeWithoutOverlay(): void
+    {
+        $this->dispatchNativeEvent([]);
+    }
+}

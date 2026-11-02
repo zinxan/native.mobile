@@ -1,0 +1,14 @@
+<?php
+
+namespace Native\Mobile\Edge;
+
+class NativeComponent
+{
+    public function renderErrorScreen(\Throwable $e): void {}
+
+    /** @param array<array-key, mixed> $event */
+    protected function dispatchUiEvent(array $event): void {}
+
+    /** @param array<array-key, mixed> $event */
+    protected function dispatchNativeEvent(array $event): void {}
+}
