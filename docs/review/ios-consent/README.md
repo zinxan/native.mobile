@@ -24,3 +24,9 @@ The installed plugin's existing native consent implementation and bridge
 manifest were inspected. No new runtime API or fallback was needed. The guide
 uses the existing public facade and documents archive/privacy declarations as
 app responsibilities rather than claiming the plugin configures them.
+
+The surrounding NativePHP 4.5 component runtime can catch its own UI exceptions
+without Laravel reporting and keep a request open. The guide explicitly
+separates this unresolved error/delivery boundary from the tested consent
+component. This documentation is not evidence of automatic native UI exception
+coverage or approval to ship the surrounding runtime integration.

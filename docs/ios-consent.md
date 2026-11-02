@@ -64,6 +64,15 @@ The Pest example uses your app's `Tests\TestCase`, the real SDK client and a
 controlled consent boundary. It tests PHP/native-component behavior, not the
 compiled Swift reporter. Run it with `php artisan test --filter=DiagnosticsTest`.
 
+Native UI consent and native UI error capture are separate boundaries. NativePHP
+4.5 can catch component exceptions before Laravel's exception handler and keep
+the component's PHP request open. A working toggle does not establish that such
+errors are reported or that a response-termination flush runs. Exercise the
+actual failure and confirm collection and delivery in your compiled app. An
+application catch that deliberately handles an error must use `report($error)`
+or `NativeWatch::captureException($error)` if it should be reported; verify the
+runtime's delivery lifecycle separately. Do not claim coverage from a CLI test.
+
 For an existing Settings component, the essential calls are:
 
 ```php
