@@ -12,6 +12,7 @@ use ZXN\NativeWatch\Mobile\NativeUiLifecycle;
 
 /**
  * Reports errors that NativePHP 4's native component loop handles itself.
+ * A throwing interaction keeps its scope until the outer loop paints/reports it.
  *
  * @phpstan-require-extends NativeComponent
  */
@@ -44,21 +45,15 @@ trait ReportsNativeUiErrors
     /** @param array<array-key, mixed> $event */
     protected function dispatchUiEvent(array $event): void
     {
-        try {
-            parent::dispatchUiEvent($event);
-        } finally {
-            $this->flushNativeWatchDiagnostics();
-        }
+        parent::dispatchUiEvent($event);
+        $this->flushNativeWatchDiagnostics();
     }
 
     /** @param array<array-key, mixed> $event */
     protected function dispatchNativeEvent(array $event): void
     {
-        try {
-            parent::dispatchNativeEvent($event);
-        } finally {
-            $this->flushNativeWatchDiagnostics();
-        }
+        parent::dispatchNativeEvent($event);
+        $this->flushNativeWatchDiagnostics();
     }
 
     private function flushNativeWatchDiagnostics(): void

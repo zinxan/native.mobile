@@ -41,11 +41,7 @@ class NativeUiParent
     {
         $this->uiEvents[] = $event;
 
-        try {
-            ($this->onUiEvent ?? static fn (): null => null)();
-        } catch (Throwable $exception) {
-            $this->renderErrorScreen($exception);
-        }
+        ($this->onUiEvent ?? static fn (): null => null)();
     }
 
     /** @param array<array-key, mixed> $event */
@@ -53,11 +49,7 @@ class NativeUiParent
     {
         $this->nativeEvents[] = $event;
 
-        try {
-            ($this->onNativeEvent ?? static fn (): null => null)();
-        } catch (Throwable $exception) {
-            $this->renderErrorScreen($exception);
-        }
+        ($this->onNativeEvent ?? static fn (): null => null)();
     }
 }
 
@@ -68,12 +60,30 @@ final class NativeUiScreen extends NativeUiParent
     /** @param array<array-key, mixed> $event */
     public function press(array $event = []): void
     {
-        $this->dispatchUiEvent($event);
+        try {
+            $this->dispatchUiEvent($event);
+        } catch (Throwable $exception) {
+            $this->renderErrorScreen($exception);
+        }
     }
 
     /** @param array<array-key, mixed> $event */
     public function receiveNative(array $event = []): void
     {
-        $this->dispatchNativeEvent($event);
+        try {
+            $this->dispatchNativeEvent($event);
+        } catch (Throwable $exception) {
+            $this->renderErrorScreen($exception);
+        }
+    }
+
+    public function dispatchUiWithoutOverlay(): void
+    {
+        $this->dispatchUiEvent([]);
+    }
+
+    public function dispatchNativeWithoutOverlay(): void
+    {
+        $this->dispatchNativeEvent([]);
     }
 }

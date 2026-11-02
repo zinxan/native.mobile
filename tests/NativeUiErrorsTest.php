@@ -149,3 +149,34 @@ it('contains reporting and lifecycle failures without changing parent behavior',
         ->and($screen->uiEvents)->toBe([['callback_id' => 9]])
         ->and($screen->nativeEvents)->toBe([['event' => 'example.finished']]);
 });
+
+it('keeps failed interaction scope until the outer loop reports the original error', function (bool $native): void {
+    config(['nativewatch.testing_offline' => true]);
+    $client = app(Client::class);
+    $client->scope->setUser(['id' => 'native-user']);
+    $screen = new NativeUiScreen;
+    $error = new RuntimeException('The interaction failed after its breadcrumb.');
+    $interaction = function () use ($client, $error): never {
+        $client->addBreadcrumb('operation', 'Started the native operation');
+
+        throw $error;
+    };
+    $screen->onUiEvent = $interaction;
+    $screen->onNativeEvent = $interaction;
+
+    expect(fn () => $native ? $screen->dispatchNativeWithoutOverlay() : $screen->dispatchUiWithoutOverlay())
+        ->toThrow(fn (RuntimeException $caught) => expect($caught)->toBe($error));
+
+    $screen->renderErrorScreen($error);
+    $files = glob(config('nativewatch.outbox.path').'/*.json') ?: [];
+    expect($files)->toHaveCount(1);
+    $event = json_decode(file_get_contents($files[0]), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(array_column($event['breadcrumbs'], 'message'))->toBe(['Started the native operation'])
+        ->and($event['context']['user'] ?? null)->toBe(['id' => 'native-user'])
+        ->and($client->scope->breadcrumbs->all())->toBe([])
+        ->and($client->scope->toContext())->toBe([]);
+
+    $screen->renderErrorScreen($error);
+    expect($client->pending())->toBe(1);
+})->with(['UI interaction' => false, 'native callback' => true]);

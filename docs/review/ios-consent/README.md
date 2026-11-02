@@ -28,13 +28,19 @@ than claiming the plugin configures them.
 The NativePHP 4.5 component runtime catches UI exceptions without Laravel
 reporting and keeps its PHP request open. This PR adds the explicit
 `ReportsNativeUiErrors` adapter and guarded screen lifecycle delivery hooks.
-The complete mobile package suite passes 38 tests with 99 assertions, including
+The complete mobile package suite passes 40 tests with 115 assertions, including
 new parent-boundary tests for overlay preservation, original exception reporting,
 same-object repaint deduplication, Laravel's do-not-report policy, declined
 consent, offline retry on a later interaction, scope clearing, previous native
 and PHP fatal collection before the next screen waits, SDK failure containment
 and a separate process without NativePHP installed. HTTP is faked in these
 library tests; they are not native crash acceptance evidence.
+
+Two regression cases cover exceptions propagated by the UI and native dispatch
+parents to the outer error loop. Both failed before the dispatch-order fix
+because their queued event lost its breadcrumb. They now preserve the original
+Throwable, breadcrumb and user scope until capture, clear scope afterwards,
+and keep one queued event when the same overlay is repainted.
 
 PHPStan level 7 passes with zero errors. Its analysis includes a typed native
 parent host fixture so the opt-in trait is actually checked, without ignoring

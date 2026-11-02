@@ -90,6 +90,8 @@ attempts delivery after UI/native callbacks; screen lifecycle events also collec
 previous native/PHP fatal reports and drain the outbox before the loop waits.
 Scope is cleared between interactions/screens. The adapter never records native
 tree or event payloads, and collection/delivery remains behind diagnostic consent.
+A failed interaction retains its scope until the outer error screen reports it,
+so its breadcrumbs are included before that scope is cleared.
 Delivery attempts use the configured SDK network timeouts. They run after the
 parent interaction/error screen, while the PHP event loop still owns that thread.
 
