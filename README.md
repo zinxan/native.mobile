@@ -28,6 +28,11 @@ and does not declare additional Gradle dependencies or runtime permissions.
 
 ## Install
 
+Install [NativePHP Mobile 4](https://nativephp.com/docs/mobile/4/getting-started/introduction) in your app
+first. The plugin steps below use its `nativephp-plugins-provider` tag and
+`native:plugin:*` commands, which do not exist before NativePHP Mobile is
+installed.
+
 Create a mobile project in [NativeWatch](https://native.watch) and copy its
 ingest key. Then install SDK 0.2.1 or later:
 
@@ -145,6 +150,10 @@ from CI with `php artisan nativewatch:symbols` and a separate private CI token;
 never include that token in an app. Follow the
 [iOS symbolication guide](https://native.watch/docs/ios-symbolication).
 Android ProGuard/R8 mapping and native symbolication are separate work.
+
+To show the commit that likely caused an error, publish each release from CI
+with `php artisan nativewatch:release`. It needs `NATIVEWATCH_RELEASE_TOKEN`, a
+CI-only secret. See [release and commit tracking](https://native.watch/docs/releases-and-commits).
 
 ## Verify your integration
 
